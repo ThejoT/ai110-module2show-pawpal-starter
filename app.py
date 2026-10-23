@@ -13,11 +13,19 @@ st.caption("A smart pet care planner: track feedings, walks, meds and appointmen
 # --------------------------------------------------------------------------- #
 # Session "memory": create the Owner once and keep it across reruns
 # --------------------------------------------------------------------------- #
+DATA_FILE = "data.json"
+
 if "owner" not in st.session_state:
-    st.session_state.owner = Owner("Jordan")
+    # Load saved pets and tasks from data.json if it exists (data persistence).
+    st.session_state.owner = Owner.load_from_json(DATA_FILE) or Owner("Jordan")
 
 owner: Owner = st.session_state.owner
 scheduler = Scheduler(owner)
+
+
+def save() -> None:
+    """Write the current owner, pets and tasks to data.json."""
+    owner.save_to_json(DATA_FILE)
 
 
 def task_rows(tasks):
@@ -44,6 +52,7 @@ st.subheader("👤 Owner")
 new_name = st.text_input("Owner name", value=owner.name)
 if new_name and new_name != owner.name:
     owner.name = new_name
+    save()
 
 st.subheader("🐶 Add a pet")
 with st.form("add_pet", clear_on_submit=True):
@@ -57,6 +66,7 @@ with st.form("add_pet", clear_on_submit=True):
         else:
             try:
                 owner.add_pet(Pet(pet_name.strip(), species, int(age)))
+                save()
                 st.success(f"Added {pet_name}!")
             except ValueError as err:
                 st.error(str(err))
@@ -91,6 +101,7 @@ if owner.pets:
                 priority=priority,
                 duration_minutes=int(duration),
             ))
+            save()
             st.success(f"Scheduled '{description}' for {task_pet} at {task_time:%H:%M}.")
 
 st.divider()
@@ -126,11 +137,26 @@ if open_today:
     choice = st.selectbox("Task", list(labels))
     if st.button("Mark complete"):
         nxt = scheduler.mark_task_complete(labels[choice])
+        save()
         if nxt:
             st.toast(f"Done! Next '{nxt.description}' scheduled for {nxt.due_date:%a %b %d}.")
         else:
             st.toast("Done!")
         st.rerun()
+
+# --------------------------------------------------------------------------- #
+# Find the next free time slot (uses task durations across all pets)
+# --------------------------------------------------------------------------- #
+st.subheader("🕒 Find a free slot")
+c1, c2 = st.columns([2, 1])
+slot_minutes = c1.number_input("How many minutes do you need today?", min_value=5,
+                               max_value=600, value=30, step=5)
+if c2.button("Find slot"):
+    slot = scheduler.find_next_available_slot(int(slot_minutes))
+    if slot:
+        st.success(f"The earliest free {slot_minutes}-minute block today starts at {slot}.")
+    else:
+        st.warning("No free block that long between 07:00 and 21:00 today.")
 
 st.divider()
 

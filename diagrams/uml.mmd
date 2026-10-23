@@ -5,6 +5,10 @@ classDiagram
         +add_pet(pet) None
         +get_pet(name) Pet
         +get_all_tasks() list~Task~
+        +to_dict() dict
+        +from_dict(data)$ Owner
+        +save_to_json(path) None
+        +load_from_json(path)$ Owner
     }
 
     class Pet {
@@ -38,6 +42,7 @@ classDiagram
         +filter_tasks(pet_name, completed) list~Task~
         +mark_task_complete(task) Task
         +detect_conflicts(tasks) list~str~
+        +find_next_available_slot(duration_minutes, day, day_start, day_end) str
     }
 
     Owner "1" o-- "*" Pet : has

@@ -22,11 +22,12 @@ def main() -> None:
     owner.add_pet(luna)
 
     # --- Add tasks deliberately OUT OF ORDER to prove sorting works ---
-    mochi.add_task(Task("Evening walk", "18:30", frequency="daily", priority="high"))
-    mochi.add_task(Task("Breakfast", "07:30", frequency="daily", priority="high"))
-    luna.add_task(Task("Flea medication", "09:00", frequency="weekly", priority="medium"))
+    mochi.add_task(Task("Evening walk", "18:30", frequency="daily", priority="high", duration_minutes=45))
+    mochi.add_task(Task("Breakfast", "07:30", frequency="daily", priority="high", duration_minutes=15))
+    luna.add_task(Task("Flea medication", "09:00", frequency="weekly", priority="medium", duration_minutes=10))
     luna.add_task(Task("Feed Luna", "07:30", frequency="daily", priority="high"))  # same time as Breakfast
-    mochi.add_task(Task("Vet appointment", "14:00", priority="low"))
+    mochi.add_task(Task("Vet appointment", "14:00", priority="low", duration_minutes=60))
+    mochi.add_task(Task("Morning walk", "07:00", frequency="daily", priority="high", duration_minutes=30))
 
     scheduler = Scheduler(owner)
 
@@ -55,6 +56,13 @@ def main() -> None:
     # --- Filtering by status ---
     print_tasks("⬜ Still to do", scheduler.filter_tasks(completed=False))
     print_tasks("✅ Completed", scheduler.filter_tasks(completed=True))
+
+    # --- Next available slot (uses task durations across all pets) ---
+    print("\n🕒 Next available slot")
+    print("-" * 60)
+    for minutes in (30, 90):
+        slot = scheduler.find_next_available_slot(minutes)
+        print(f"  Earliest free {minutes}-minute block today: {slot or 'none'}")
 
     # --- Priority view ---
     print_tasks("⭐ Today by priority (high first)",
