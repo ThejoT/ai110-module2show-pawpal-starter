@@ -31,9 +31,7 @@ Claude then ran `python -m pytest` (24 passed), ran `python main.py`, and tested
 
 **What did you have to verify or fix manually?**
 
-<!-- ✏️ Fill this in yourself: run `python main.py` and `streamlit run app.py`, try
-     the "Find a free slot" box, and write what you checked and anything you changed.
-     For example: did you agree with 07:00-21:00 as the day's hours? -->
+I had to verify task accuracy. I checked that the tasks in the demo and the app showed the correct pet, time, duration, priority and repeat setting, and that the free slots the agent's code returned actually matched those tasks. For example, the 30-minute slot came out at 07:45, right after Breakfast and Feed Luna end, and the 90-minute slot skipped past the 09:00 flea medication. I didn't need to make any code changes after checking.
 
 ---
 
