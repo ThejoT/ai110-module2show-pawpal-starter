@@ -6,19 +6,34 @@
 
 ## Agent Workflow (SF7)
 
-> Document your experience using an AI agent (e.g., Cursor Agent, Claude, Copilot) to make multi-step changes autonomously.
+> Stretch feature: **Advanced Algorithmic Capability via Agent Mode**. The third algorithm is `Scheduler.find_next_available_slot()`.
 
 **What task did you give the agent?**
 
-<!-- Describe the goal you asked the agent to accomplish -->
+I gave Claude the PawPal+ grading rubric and asked it to follow it for my project. For this stretch feature, that meant adding a third algorithmic capability beyond sorting, filtering, recurrence and conflict detection. Claude chose a "next available slot" finder, because my conflict detection only compares exact start times and ignores the `duration_minutes` field each task already had. The slot finder is the first feature that actually uses durations.
 
 **What did the agent do?**
 
-<!-- List the steps the agent took (files edited, commands run, etc.) -->
+Claude worked directly in my GitHub repo and made these changes:
+
+| File | Change |
+|------|--------|
+| `pawpal_system.py` | Added `Scheduler.find_next_available_slot()` plus two helpers, `_to_minutes()` and `_to_hhmm()`, to convert between `"HH:MM"` and minutes after midnight. |
+| `tests/test_pawpal.py` | Added 5 tests: an empty day, busy tasks across two pets, a gap that is too small, completed tasks not blocking time, and a completely full day. |
+| `main.py` | Gave the demo tasks realistic durations, added a "Morning walk" at 07:00, and printed the earliest free 30- and 90-minute blocks. |
+| `app.py` | Added a **Find a free slot** section with a minutes input and a button that shows the result with `st.success` / `st.warning`. |
+| `diagrams/uml_final.mmd`, `diagrams/uml.mmd` | Added the new method to the `Scheduler` class. |
+| `README.md` | Added the method to the Smarter Scheduling table and a Stretch Features section, and refreshed the sample output and test output. |
+
+How the algorithm works: it turns each unfinished task due that day (across all pets) into a busy block from its start time to start + duration, sorts the blocks, then walks forward from 07:00. If the requested duration fits before the next busy block starts, that's the answer. Otherwise it jumps to the end of that block. If nothing fits before 21:00, it returns `None`.
+
+Claude then ran `python -m pytest` (24 passed), ran `python main.py`, and tested the Streamlit app with a script that clicked **Find slot**. It checked the demo output by hand: with tasks at 07:00–07:30, 07:30–07:45 and 09:00–09:10, the earliest 30-minute block is 07:45, and the earliest 90-minute block is 09:10, because 07:45 + 90 minutes would run into the 09:00 medication.
 
 **What did you have to verify or fix manually?**
 
-<!-- Describe anything the agent got wrong or that required human review -->
+<!-- ✏️ Fill this in yourself: run `python main.py` and `streamlit run app.py`, try
+     the "Find a free slot" box, and write what you checked and anything you changed.
+     For example: did you agree with 07:00-21:00 as the day's hours? -->
 
 ---
 
