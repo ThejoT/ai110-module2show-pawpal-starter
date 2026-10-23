@@ -1,62 +1,67 @@
 # PawPal+ Initiative: Learnings
 
 ## 1. System Design
-**a. original design**
 
-We started by defining three simple operations that the pet owner would have to do: add a pet with its name, species and age; schedule a daily care task like a walk at 08:00; and order the tasks of the day by the order in which they will be performed. So I created a UML diagram with four classes based on these actions. A task is a specific activity with a description, time, frequency, due date and completion status. The pet contains the pet’s information and tasks. The owner can view all the tasks in one place. He does this by calling the get_all_tasks() method. This is because there are so many pets. The Schedule is the brain of the system. It is responsible for scheduling and construction. It keeps a record of the Owner. As both the Task and Pet classes are mostly data, I have used Python dataclasses to keep the code concise and readable.
+**a. Original Design**
 
-**b) Design modifications**
+We started by defining three simple operations that the pet owner would have to do: add a pet with its name, species and age; schedule a daily care task, like a walk at 08:00; and order the day's tasks by the order in which they will be performed. I then created a UML diagram with four classes based on these actions. A `Task` is a specific activity with a description, time, frequency, due date and completion status. The `Pet` class contains the pet's information and tasks. The `Owner` can view all the tasks in one place by calling the `get_all_tasks()` method, which matters because an owner can have many pets. The `Scheduler` is the brain of the system. It is responsible for building and organizing the schedule, and it keeps a reference to the `Owner`. Since both the `Task` and `Pet` classes are mostly data, I used Python dataclasses to keep the code concise and readable.
 
-My design was altered while being implemented. When I asked it to evaluate my skeleton it said that it couldn't tell which task belonged to which pet when all the tasks from each pet were put into one list. To remedy this, I added a pet_name field to Task, which is automatically populated by Pet.add_task(). I also added priority and duration_minutes to Task, since the starter app was already collecting those values. I also added the task_count() and remove_task() methods to Pet so that the UI and tests can interact with a pet’s tasks.
+**b. Design Modifications**
+
+My design changed while I was implementing it. When I asked the AI to evaluate my skeleton, it said that it couldn't tell which task belonged to which pet once all the tasks from every pet were put into one list. To remedy this, I added a `pet_name` field to `Task`, which is automatically filled in by `Pet.add_task()`. I also added `priority` and `duration_minutes` to `Task`, since the starter app was already collecting those values. Finally, I added the `task_count()` and `remove_task()` methods to `Pet` so that the UI and tests can interact with a pet's tasks.
 
 ---
 
 ## 2. Scheduling Logic and Trade-offs
-**a. Priorities and limitations**
 
-I have a scheduler that takes into account four variables: the status of the task, the due date, the time of day and the priority (high, medium or low). And I realized that the most important thing in pet care is a clock, because the most important thing is time. Meals and medications are scheduled so the schedule automatically appears in chronological order. Owners are presented with a different point of view when faced with the conundrum of setting duties that cannot be disregarded on hectic days.
+**a. Priorities and Limitations**
 
-**b. Discounted.**
+My scheduler takes into account four variables: the status of the task, the due date, the time of day and the priority (high, medium or low). I realized that the most important thing in pet care is the clock, because meals and medications happen at set times, so the schedule automatically appears in chronological order. On hectic days, owners can also switch to a priority view to see which tasks cannot be skipped.
 
-The main trade-off in my scheduler is that conflict detection only looks at assignments that share the same start time and date. It does not detect overlapping durations, so a 60 minute walk at 8:00 AM and a feed at 8:30 AM will not be detected. I think this is a good way to go. Most pet care tasks are short term. Exact match testing is easy to read and easy to do. The scheduler warns the user not to halt the user, so it is less likely that an overlap is missed. sort by time () sorts the "HH:MM" strings using sorted () and a lambda key rather than converting to datetime objects. That's another compromise. This is due to the times being padded with 0. So I change time when creating a task (e.g. 9:00 -> 09:00).
+**b. Trade-offs**
+
+The main trade-off in my scheduler is that conflict detection only looks at tasks that share the same start time and date. It does not detect overlapping durations, so a 60-minute walk at 8:00 AM and a feeding at 8:30 AM will not be flagged. I think this is a good approach. Most pet care tasks are short, and exact-match checking is easy to read and easy to test. The scheduler also warns the user instead of stopping them, so a missed overlap is low-risk. Another compromise is that `sort_by_time()` sorts the `"HH:MM"` strings using `sorted()` and a lambda key rather than converting them to `datetime` objects. This only works when the times are padded with a zero, so I adjust the time when creating a task (e.g., `9:00` → `09:00`).
 
 ---
 
-## 3. AI-Collaborating on Projects
-**a. use of AI**
+## 3. AI Collaboration on the Project
 
-I had an AI coding assistant named Claude to help me throughout the project. I used it for generating the Mermaid UML diagram, scaffolding the class skeleton, coding the sorting, filtering, recurrence and conflict detection logic, writing the test suite and integrating all of the above into the Streamlit UI. It also helped me in the development of the four courses. It helped me with some setup issues as well, like making sure that my virtual environment was working in Git Bash and getting my files into the repo. The best prompts were the ones I made for my own files and my own needs. For example, prompts such as how should the Scheduler get all tasks from the Owner's pets, or the most important edge cases to test for a scheduler with sorting and recurring tasks.
+**a. Use of AI**
 
-**b. Assessment and validation**
+I used an AI coding assistant named Claude throughout the project. It helped me brainstorm the four classes, generate the Mermaid UML diagram, scaffold the class skeleton, code the sorting, filtering, recurrence and conflict detection logic, write the test suite and integrate all of it into the Streamlit UI. It also helped me with some setup issues, like getting my virtual environment working in Git Bash and getting my files into the repo. The best prompts were the ones written around my own files and needs, such as asking how the `Scheduler` should get all tasks from the `Owner`'s pets, or asking for the most important edge cases to test for a scheduler with sorting and recurring tasks.
 
-The one suggestion I did not implement as-is was to convert each “HH:MM” string into a datetime object within the sort key. I kept the string-based sorting approach as is more understandable but added validation that no padding is allowed. tested in test “test_single_digit_hour_sorts_correctly”. The exam would be a failure if 9:00 came after 10:00. I also thought about generating warning messages in the conflict detection report instead of throwing exceptions to prevent the application from crashing when two tasks are in conflict. I would usually just run python main.py to see the output, and python -m pytest to make sure the tests still passed after making changes to the AI.
+**b. Assessment and Validation**
+
+The one suggestion I did not implement as-is was to convert each `"HH:MM"` string into a `datetime` object within the sort key. I kept the string-based sorting approach because it is easier to understand, but I added validation that zero-pads every time. I tested this with `test_single_digit_hour_sorts_correctly`, which would fail if 9:00 came after 10:00. I also chose to have conflict detection return warning messages instead of throwing exceptions, so the application doesn't crash when two tasks conflict. After every change the AI made, I ran `python main.py` to check the output and `python -m pytest` to make sure the tests still passed.
 
 **c. Strategy for Artificial Intelligence**
 
-The best part of the assistant was the possibility to edit several files at the same time, which was very important for the recurring activities, because the logic applied to the Task and the Scheduler. The assistant also had the advantage of being able to do the demonstration and tests to prove the code worked. It would have been better to have separate chat threads for design, algorithms and testing topics. In retrospect, I was often in one very long conversation. That's because in a long conversation you might get old code from previous steps mixed with new requests. The most important thing I've learned as the "architect of everything" is that artificial intelligence can code fast. But I had to make some architecture decisions. For instance, I also had the Scheduler loop over Owner.get_all_tasks() instead of a single pet, kept it simple, and tested all outcomes.
+The best feature of the assistant was its ability to edit several files at the same time, which was very important for recurring tasks because that logic affected both `Task` and `Scheduler`. The assistant could also run the demo and tests to prove the code worked. In retrospect, it would have been better to have separate chat threads for design, algorithms and testing, because I was usually in one very long conversation, and a long conversation can mix old code from previous steps with new requests. The most important thing I learned as the "lead architect" is that artificial intelligence can code fast, but I still had to make the architecture decisions. For instance, I had the `Scheduler` work through `Owner.get_all_tasks()` instead of a single pet, kept the design simple and tested all the outcomes.
 
 ---
 
-## 4. Test and verification.
-**A. Discussion topics**
+## 4. Testing and Verification
 
-I have a test suite with 17 tests;. Mark tasks as complete Make animals work Jobs among many animals combine Sort tasks by importance and date. Filter tasks by pet and by completion status Create daily, weekly and one-off recurrences Check for conflicts (including check that completed tasks don’t conflict) Reject invalid times (like 25:00) These tests are important as the conflict detection, recurrence, and sorting are the “smart” parts of the application. So if any of these components is faulty the pet owner will get an inaccurate schedule that they may not even notice.
+**a. What I Tested**
 
-**b. Belief**
+My test suite has 17 tests. They cover marking tasks as complete, adding tasks to pets, combining tasks across multiple pets, sorting tasks by time and priority, filtering tasks by pet and by completion status, creating daily, weekly and one-time recurrences, checking for conflicts (including checking that completed tasks don't conflict) and rejecting invalid times (like 25:00). These tests are important because conflict detection, recurrence and sorting are the "smart" parts of the application. If any of these components were faulty, the pet owner would get an inaccurate schedule that they might not even notice.
 
-So I get four stars from myself in confidence. The Streamlit app and the CLI demo are both working as expected. All seventeen assessments are a success. I give it 4 stars because it does the process of finding conflicts, but it only looks for exact start times. If I had more time, I would also do duplicate tasks that are done days after the due date, overlapping tasks, tasks that go after midnight, and tasks that require removal of a pet that has tasks assigned to it.
+**b. Confidence**
+
+I give myself four stars for confidence. The Streamlit app and the CLI demo both work as expected, and all 17 tests pass. I held back one star because conflict detection only looks for exact start times. If I had more time, I would also test recurring tasks that are completed days after their due date, overlapping tasks, tasks that go past midnight and removing a pet that still has tasks assigned to it.
 
 ---
 
-## 5. Reflecting Thought
-**a. The Advantages**
+## 5. Reflection
 
-The best part for me is the separation of the logic layer and the user interface. I have already checked everything with main.py and pytest, I just applied the techniques I know to connect to Streamlit.
+**a. What Went Well**
 
-**b. Improvements?**
+The best part for me is the separation of the logic layer and the user interface. Because I had already checked everything with `main.py` and pytest, connecting it to Streamlit was just a matter of calling methods I knew worked.
 
-I would add editing and deleting tasks in the UI, and would save pets and tasks in a JSON file so the data persists across restarts. In a future version I’d also add task durations in conflict detection.
+**b. Improvements**
 
-**c. The key part:**
+I would add editing and deleting tasks in the UI, and I would save pets and tasks in a JSON file so the data persists across restarts. In a future version, I would also use task durations in conflict detection.
 
-The biggest thing I learned from that is to put the user interface first. We have a working backend, but the actual interface that a pet owner interacts with is the streamlit application. It makes sense to have things like sorting, conflict detection, etc. if you can see it on screen, a sorted table, a visible warning. In future projects I will try to plan the user interface first and not as the last step together with the backend design.
+**c. Key Takeaway**
+
+The biggest thing I learned is to put the user interface first. We have a working backend, but the Streamlit application is the actual interface that a pet owner interacts with. Features like sorting and conflict detection only make sense if you can see them on screen, as a sorted table or a visible warning. In future projects, I will plan the user interface early, together with the backend design, instead of leaving it as the last step.
