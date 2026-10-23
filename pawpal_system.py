@@ -1,7 +1,9 @@
 """PawPal+ logic layer: Task, Pet, Owner and Scheduler classes."""
 
-from dataclasses import dataclass, field, replace
+import json
+from dataclasses import asdict, dataclass, field, replace
 from datetime import date, timedelta
+from pathlib import Path
 from typing import Dict, List, Optional
 
 VALID_FREQUENCIES = ("once", "daily", "weekly")
@@ -109,6 +111,50 @@ class Owner:
         """Return every task across all of this owner's pets."""
         return [task for pet in self.pets for task in pet.tasks]
 
+    # ----- persistence ------------------------------------------------------ #
+    def to_dict(self) -> dict:
+        """Convert the owner, pets and tasks into plain JSON-friendly data."""
+        return {
+            "name": self.name,
+            "pets": [
+                {
+                    "name": pet.name,
+                    "species": pet.species,
+                    "age": pet.age,
+                    "tasks": [
+                        {**asdict(task), "due_date": task.due_date.isoformat()}
+                        for task in pet.tasks
+                    ],
+                }
+                for pet in self.pets
+            ],
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Owner":
+        """Rebuild an Owner (with pets and tasks) from data made by to_dict()."""
+        owner = cls(data["name"])
+        for pet_data in data.get("pets", []):
+            pet = Pet(pet_data["name"], pet_data["species"], pet_data.get("age", 0))
+            for task_data in pet_data.get("tasks", []):
+                task_data = dict(task_data)
+                task_data["due_date"] = date.fromisoformat(task_data["due_date"])
+                pet.add_task(Task(**task_data))
+            owner.add_pet(pet)
+        return owner
+
+    def save_to_json(self, path: str = "data.json") -> None:
+        """Save the owner, pets and tasks to a JSON file."""
+        Path(path).write_text(json.dumps(self.to_dict(), indent=2), encoding="utf-8")
+
+    @classmethod
+    def load_from_json(cls, path: str = "data.json") -> Optional["Owner"]:
+        """Load an owner from a JSON file, or return None if the file doesn't exist."""
+        file = Path(path)
+        if not file.exists():
+            return None
+        return cls.from_dict(json.loads(file.read_text(encoding="utf-8")))
+
 
 # --------------------------------------------------------------------------- #
 # Scheduler
@@ -175,3 +221,40 @@ class Scheduler:
                 names = ", ".join(f"{t.description} ({t.pet_name})" for t in group)
                 warnings.append(f"⚠️ Conflict on {day} at {time}: {names}")
         return warnings
+
+    # ----- next available slot ---------------------------------------------- #
+    @staticmethod
+    def _to_minutes(hhmm: str) -> int:
+        """Convert "HH:MM" into minutes after midnight."""
+        hours, minutes = hhmm.split(":")
+        return int(hours) * 60 + int(minutes)
+
+    @staticmethod
+    def _to_hhmm(total_minutes: int) -> str:
+        """Convert minutes after midnight into "HH:MM"."""
+        return f"{total_minutes // 60:02d}:{total_minutes % 60:02d}"
+
+    def find_next_available_slot(self, duration_minutes: int, day: Optional[date] = None,
+                                 day_start: str = "07:00",
+                                 day_end: str = "21:00") -> Optional[str]:
+        """Return the earliest "HH:MM" start time on a day with no overlapping tasks.
+
+        Unfinished tasks across all pets block time from their start for
+        duration_minutes. Returns None if nothing fits between day_start and day_end.
+        """
+        day = day or date.today()
+        busy = sorted(
+            (self._to_minutes(t.time), self._to_minutes(t.time) + t.duration_minutes)
+            for t in self.owner.get_all_tasks()
+            if t.due_date == day and not t.completed
+        )
+
+        candidate = self._to_minutes(day_start)
+        for start, end in busy:
+            if candidate + duration_minutes <= start:
+                break                      # the gap before this task is big enough
+            candidate = max(candidate, end)
+
+        if candidate + duration_minutes <= self._to_minutes(day_end):
+            return self._to_hhmm(candidate)
+        return None

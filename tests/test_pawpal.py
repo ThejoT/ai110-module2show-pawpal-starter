@@ -149,3 +149,58 @@ def test_completed_tasks_do_not_conflict(owner):
 def test_invalid_time_rejected(bad_time):
     with pytest.raises(ValueError):
         Task("Bad", bad_time)
+
+
+# ----- Stretch: next available slot ----------------------------------------- #
+def test_next_slot_is_day_start_when_schedule_is_empty(owner):
+    assert Scheduler(owner).find_next_available_slot(30) == "07:00"
+
+
+def test_next_slot_skips_busy_tasks_across_pets(owner):
+    owner.get_pet("Mochi").add_task(Task("Walk", "07:00", duration_minutes=30))
+    owner.get_pet("Luna").add_task(Task("Feed", "07:30", duration_minutes=15))
+    # 07:00-07:30 and 07:30-07:45 are busy, so the first free 20 minutes start at 07:45
+    assert Scheduler(owner).find_next_available_slot(20) == "07:45"
+
+
+def test_next_slot_uses_a_gap_that_is_big_enough(owner):
+    mochi = owner.get_pet("Mochi")
+    mochi.add_task(Task("Walk", "07:00", duration_minutes=30))
+    mochi.add_task(Task("Vet", "09:00", duration_minutes=60))
+    scheduler = Scheduler(owner)
+    assert scheduler.find_next_available_slot(60) == "07:30"   # fits 07:30-08:30
+    assert scheduler.find_next_available_slot(120) == "10:00"  # gap is only 90 min
+
+
+def test_completed_tasks_do_not_block_slots(owner):
+    walk = Task("Walk", "07:00", duration_minutes=30)
+    owner.get_pet("Mochi").add_task(walk)
+    walk.mark_complete()
+    assert Scheduler(owner).find_next_available_slot(30) == "07:00"
+
+
+def test_no_slot_when_day_is_full(owner):
+    owner.get_pet("Mochi").add_task(Task("All day", "07:00", duration_minutes=840))
+    assert Scheduler(owner).find_next_available_slot(15) is None
+
+
+# ----- Stretch: JSON persistence -------------------------------------------- #
+def test_save_and_load_round_trip(owner, tmp_path):
+    owner.get_pet("Mochi").add_task(
+        Task("Walk", "08:00", frequency="daily", priority="high",
+             due_date=date(2026, 3, 1), duration_minutes=30))
+    path = tmp_path / "data.json"
+    owner.save_to_json(path)
+
+    loaded = Owner.load_from_json(path)
+    assert loaded.name == "Jordan"
+    assert [p.name for p in loaded.pets] == ["Mochi", "Luna"]
+    task = loaded.get_pet("Mochi").tasks[0]
+    assert (task.description, task.time, task.frequency, task.priority) == \
+        ("Walk", "08:00", "daily", "high")
+    assert task.due_date == date(2026, 3, 1)
+    assert task.pet_name == "Mochi"
+
+
+def test_load_missing_file_returns_none(tmp_path):
+    assert Owner.load_from_json(tmp_path / "missing.json") is None
